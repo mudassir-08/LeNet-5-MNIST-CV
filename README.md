@@ -1,155 +1,83 @@
-# LeNet-5 MNIST Digit Classification using PyTorch  
-### End-to-End Computer Vision System (Training → Evaluation → Deployment)
+# LeNet-5-Style MNIST Classifier
 
----
+A PyTorch implementation and deployment demo for handwritten-digit classification on MNIST. This project is my **starting point in machine-learning research**: a reproducible-in-progress baseline for learning how to formulate experiments, evaluate a model, analyze errors, and build on prior work. It does not propose a new architecture or claim a novel research contribution.
 
-##  Project Deployment & Access
+## Project status and research scope
 
-I have developed, trained, and deployed this complete **LeNet-5 based digit classification system** using PyTorch and Hugging Face Spaces.
+The project currently provides a training and evaluation workflow in a Jupyter notebook, reusable model and helper modules, and a Gradio inference app. The experiment is best treated as an educational baseline and a foundation for future research questions—not as a benchmark study or production-ready system.
 
-### 🔹 Live Inference System (Deployed Model)
-You can directly test the trained model here:
+**Research question to build from:** How do model design and training choices affect classification performance and error patterns on handwritten digits?
 
--- https://huggingface.co/spaces/Mudassir-08/lenet5-mnist-demo  
+## Results
 
-✔ This interface allows you to:
-- Upload handwritten digit images  
-- Run real-time inference using the trained CNN  
-- View predicted digit outputs instantly  
+The checked-in notebook contains recorded output from one 15-epoch training run:
 
----
+| Split / metric | Result |
+|---|---:|
+| Training accuracy | 99.30% |
+| Validation accuracy | 98.98% |
+| Test accuracy | 98.82% |
 
-### 🔹 Trained Model (Reusable Artifact)
-The trained model is publicly hosted and can be reused for research or applications:
+These are the values recorded in the notebook, not independently reproduced results or averages across multiple runs. The notebook also displays training curves, sample predictions, and a test-set confusion matrix. To make the results suitable for rigorous comparison, future experiments should repeat runs across multiple seeds and report variability, document the exact environment, and compare against explicit baselines.
 
--- https://huggingface.co/Mudassir-08/lenet5-mnist-demo  
+## Dataset and preprocessing
 
-✔ You can:
-- Download the `lenet5_model.pth` checkpoint  
-- Load it in PyTorch for inference  
-- Fine-tune it on new datasets  
-- Integrate it into APIs or production systems  
+The experiment uses MNIST: 60,000 training images and 10,000 test images of handwritten digits in 10 classes. Images are resized to 32×32, converted to tensors, and normalized using mean 0.5 and standard deviation 0.5.
 
----
+The notebook requests a 10% validation split from the 60,000-example training set. In `src/helper_dataset.py`, the split uses the first 54,000 indices for training and the last 6,000 for validation, with random sampling within each subset. This is a fixed index-based split, not a newly randomized or stratified split. The official test set is evaluated after training.
 
-## 1. Project Overview
+## Model
 
-This project implements a full **computer vision pipeline** using the classical **LeNet-5 Convolutional Neural Network (CNN)** architecture.
+The model in `src/model.py` is a compact **LeNet-5-style variant** for grayscale input, with two convolutional layers, `tanh` activations, max pooling, and fully connected layers of 120 and 84 units followed by a 10-class output layer. The pooling and implementation details should be considered when comparing it with the original LeNet-5 architecture.
 
-The goal was to build not just a model, but a **complete deep learning system**, including:
+## Training and evaluation
 
-- Data preprocessing (MNIST dataset handling)
-- CNN model implementation (LeNet-5)
-- Training & optimization pipeline
-- Evaluation with quantitative + qualitative analysis
-- Deployment as a working inference application
+The training notebook is `notebooks/LeNet5.ipynb`; reusable code is in `src/`:
 
-This project demonstrates how foundational CNN architectures can be engineered into real-world deployable systems.
+- `model.py` — LeNet-5-style network definition.
+- `helper_dataset.py` — MNIST loading and train/validation/test data loaders.
+- `helper_train.py` — training loop using cross-entropy loss and the optimizer supplied by the notebook.
+- `helper_evaluation.py` — accuracy, confusion-matrix, and seed utilities.
+- `helper_plotting.py` — training curves, sample predictions, and confusion-matrix plots.
 
----
+The recorded notebook run uses seed 123, batch size 256, 15 epochs, and SGD with a learning rate of 0.1. A `ReduceLROnPlateau` scheduler is created in the notebook but is not passed to the training function, so it does not affect the recorded run. The seed utility sets random seeds; the notebook does not call the separate deterministic-algorithms utility. Therefore, identical results across hardware and software environments are not guaranteed.
 
-## 2. What I Built
+## Run the notebook
 
-This is a complete end-to-end deep learning system that includes:
+From the repository root, install the listed dependencies and Matplotlib (used by the plotting helpers), then open the notebook:
 
-### 🔹 Model Development
-- Implemented LeNet-5 architecture in PyTorch  
-- Designed for grayscale digit classification (10 classes)  
-- Adapted input pipeline to 32×32 resolution  
+```bash
+python -m pip install -r requirements.txt matplotlib
+jupyter notebook notebooks/LeNet5.ipynb
+```
 
-### 🔹 Training Pipeline
-- SGD optimizer with learning rate scheduling  
-- Batch training with validation monitoring  
-- Reproducible experiments using fixed random seeds  
+The dependency versions are not pinned. The notebook was recorded in a Google Colab environment; results and runtime may vary in other environments. Training is notebook-based—there is no standalone training command in this repository.
 
-### 🔹 Evaluation System
-- Accuracy tracking across train/validation/test sets  
-- Confusion matrix-based error analysis  
-- Visual inspection of model predictions  
+## Inference demo
 
-### 🔹 Deployment System
-- Converted trained model into deployable artifact  
-- Built Hugging Face Space for real-time inference  
-- Enabled image upload → prediction pipeline  
+A deployed Gradio demo is available at [LeNet-5 MNIST Demo](https://huggingface.co/spaces/Mudassir-08/lenet5-mnist-demo). The app implementation is in `app.py`. It downloads `lenet5_model.pth` from the Hugging Face model repository configured in the app (`Mudassir-08/lenet5-mnist`) at startup and returns the predicted digit. The checkpoint is hosted externally and is not included in this repository. The demo is intended for MNIST-like, single-digit images; performance on arbitrary uploaded images is not established by the MNIST test accuracy.
 
----
+To run the app locally, install the dependencies and launch it from the repository root:
 
-## 3. Model Architecture (LeNet-5)
-Input Image (1 × 32 × 32)
+```bash
+python -m pip install -r requirements.txt
+python app.py
+```
 
-→ Conv Layer (6 filters) + Tanh + Pooling
+A reachable model checkpoint at the configured Hugging Face repository is required for the app to load successfully.
 
-→ Conv Layer (16 filters) + Tanh + Pooling
+## Limitations and next research steps
 
-→ Fully Connected (120)
+- This is a single MNIST experiment with one recorded run; no multi-seed uncertainty estimates are reported.
+- There is no baseline comparison or ablation study, so the results do not isolate the effect of individual design choices.
+- The fixed index-based validation split should be assessed or replaced with a documented randomized, stratified split for controlled comparisons.
+- The current analysis emphasizes accuracy and visualizations; add per-class precision/recall, quantitative error analysis, and confidence calibration where relevant.
+- Pin dependency versions and document hardware/software details to improve reproducibility.
+- Keep deployment claims scoped to the interactive demo; robustness to non-MNIST images has not been evaluated.
 
-→ Fully Connected (84)
+These are opportunities to develop the project into a more rigorous research exercise. Any future claim of improvement should be backed by controlled comparisons and clearly reported evaluation procedures.
 
-→ Output Layer (10 classes)
+## References
 
-
-This architecture is a foundational CNN model that introduced hierarchical feature learning in computer vision.
-
----
-
-## 4. Dataset Used
-
-- MNIST handwritten digit dataset  
-- 60,000 training samples  
-- 10,000 test samples  
-- 10 output classes (digits 0–9)  
-- Grayscale images resized to 32×32  
-
----
-
-## 5. Performance Summary
-
-The trained model achieves strong results on the MNIST benchmark:
-
-| Metric | Score |
-|--------|------|
-| Training Accuracy | 99.30% |
-| Validation Accuracy | 98.98% |
-| Test Accuracy | 98.82% |
-
-### Key Observations:
-- Fast convergence during early epochs  
-- Stable generalization on unseen data  
-- Very low misclassification rate  
-- Strong performance for a lightweight CNN  
-
----
-
-## 6. System Pipeline
-
-The full system follows this workflow:
-Image Input → Preprocessing → LeNet-5 CNN → Feature Extraction → Classification → Digit Output.
-
-
-This pipeline is deployed and accessible via the Hugging Face interface.
-
----
-
-## 7. Technical Highlights
-
-- Full PyTorch implementation from scratch  
-- Modular training and evaluation pipeline  
-- Real-time inference deployment using Hugging Face Spaces  
-- Confusion matrix and visualization-based evaluation  
-- Reproducible experimental setup  
-- Production-ready model packaging  
-
----
-
-## 8. Conclusion
-
-This project demonstrates the complete lifecycle of a deep learning system — from model design and training to real-world deployment.
-
-By implementing LeNet-5 and deploying it as an interactive application, this work bridges the gap between theoretical computer vision models and practical machine learning systems.
-
----
-
-## 9. Author
-
-**Malik Muhammad Mudassir Iqbal**  
-Deep Learning & Computer Vision Engineer  
+- LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). *Gradient-Based Learning Applied to Document Recognition.* Proceedings of the IEEE, 86(11), 2278–2324.
+- MNIST database: [Yann LeCun's MNIST page](http://yann.lecun.com/exdb/mnist/).
